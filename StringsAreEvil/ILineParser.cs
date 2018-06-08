@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 
 namespace StringsAreEvil
 {
@@ -8,5 +9,6 @@ namespace StringsAreEvil
         void ParseLine(char[] line);
         void Dump();
         void ParseLine(StringBuilder line);
+        void ParseLine(ReadOnlySpan<byte> line);
     }
 }

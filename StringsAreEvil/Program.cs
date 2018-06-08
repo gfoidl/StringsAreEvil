@@ -3,7 +3,10 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Pipelines;
+using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace StringsAreEvil
 {
@@ -75,11 +78,16 @@ namespace StringsAreEvil
                     Console.WriteLine("#12 ViaRawStream2");
                     ViaRawStream2(new LineParserV12());
                 },
+                ["13"] = () =>
+                {
+                    Console.WriteLine("#13 ViaPipeReader");
+                    ViaPipeReader(new LineParserPipelinesAndSpan()).Wait();
+                },
             };
 
 
 #if DEBUG
-            dict["12"]();
+            dict["13"]();
             Environment.Exit(0);
 #endif
 
@@ -103,6 +111,98 @@ namespace StringsAreEvil
             }
 
             Console.WriteLine(Environment.NewLine);
+        }
+
+        private static async Task ViaPipeReader(LineParserPipelinesAndSpan lineParser)
+        {
+            var reader = CreateFileReader(@"..\..\example-input.csv");
+
+            while (true)
+            {
+                var result = await reader.ReadAsync();
+                var buffer = result.Buffer;
+
+                ParseLines(lineParser, ref buffer);
+
+                reader.AdvanceTo(buffer.Start, buffer.End);
+
+                if (result.IsCompleted)
+                {
+                    break;
+                }
+            }
+
+            reader.Complete();
+        }
+
+        private static void ParseLines(ILineParser lineParser, ref ReadOnlySequence<byte> buffer)
+        {
+            const byte newLine = (byte)'\n';
+
+            var reader = new BufferReader(buffer);
+
+            while (!reader.End)
+            {
+                var span = reader.UnreadSegment;
+                var index = span.IndexOf(newLine);
+                var length = 0;
+
+                if (index != -1)
+                {
+                    length = index;
+                    lineParser.ParseLine(span.Slice(0, index));
+                }
+                else
+                {
+                    // We didn't find the new line in the current segment, see if it's 
+                    // another segment
+                    var current = reader.Position;
+                    var linePos = buffer.Slice(current).PositionOf(newLine);
+
+                    if (linePos == null)
+                    {
+                        // Nope
+                        break;
+                    }
+
+                    // We found one, so get the line and parse it
+                    var line = buffer.Slice(current, linePos.Value);
+                    ParseLine(lineParser, line);
+
+                    length = (int)line.Length;
+                }
+
+                // Advance past the line + the \n
+                reader.Advance(length + 1);
+            }
+
+            // Update the buffer
+            buffer = buffer.Slice(reader.Position);
+        }
+
+        private static void ParseLine(ILineParser lineParser, in ReadOnlySequence<byte> line)
+        {
+            // Lines are always small so we incur a small copy if we happen to cross a buffer boundary
+            if (line.IsSingleSegment)
+            {
+                lineParser.ParseLine(line.First.Span);
+            }
+            else if (line.Length < 256)
+            {
+                // Small lines we copy to the stack
+                Span<byte> stackLine = stackalloc byte[(int)line.Length];
+                line.CopyTo(stackLine);
+                lineParser.ParseLine(stackLine);
+            }
+            else
+            {
+                // Should be extremely rare
+                var length = (int)line.Length;
+                var buffer = ArrayPool<byte>.Shared.Rent(length);
+                line.CopyTo(buffer);
+                lineParser.ParseLine(buffer.AsSpan(0, length));
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
         }
 
         private static void ViaStreamReader(ILineParser lineParser)
@@ -243,6 +343,52 @@ namespace StringsAreEvil
                     throw new Exception("File could not be parsed", exception);
                 }
             }
+        }
+
+        // Create a PipeReader from a FileStream
+        private static PipeReader CreateFileReader(string path)
+        {
+            async Task ProcessFileAsync(PipeWriter writer, int bufferSize)
+            {
+                try
+                {
+                    // This turns off internal file stream buffering
+                    using (var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, bufferSize: 1))
+                    {
+                        while (true)
+                        {
+                            var memory = writer.GetMemory(bufferSize);
+
+                            MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)memory, out var segment);
+
+                            var read = file.Read(segment.Array, segment.Offset, segment.Count);
+
+                            if (read == 0)
+                            {
+                                break;
+                            }
+
+                            writer.Advance(read);
+
+                            await writer.FlushAsync();
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    writer.Complete(ex);
+                }
+                finally
+                {
+                    writer.Complete();
+                }
+            }
+
+            var segmentSize = 8 * 1024;
+            var pipe = new Pipe(new PipeOptions(readerScheduler: PipeScheduler.Inline, minimumSegmentSize: segmentSize));
+            _ = ProcessFileAsync(pipe.Writer, (segmentSize / 2));
+
+            return pipe.Reader;
         }
     }
 }

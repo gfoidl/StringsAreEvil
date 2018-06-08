@@ -144,5 +144,9 @@ namespace StringsAreEvil
 
             return flip ? -val : val;
         }
+
+        public void ParseLine(ReadOnlySpan<byte> line)
+        {
+        }
     }
 }

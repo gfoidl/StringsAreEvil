@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace StringsAreEvil
@@ -85,6 +86,10 @@ namespace StringsAreEvil
             }
 
             return list;
+        }
+
+        public void ParseLine(ReadOnlySpan<byte> line)
+        {
         }
     }
 }

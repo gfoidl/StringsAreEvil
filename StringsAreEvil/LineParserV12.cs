@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -143,6 +144,10 @@ namespace StringsAreEvil
             }
 
             return flip ? -val : val;
+        }
+
+        public void ParseLine(ReadOnlySpan<byte> line)
+        {
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Buffers;
+﻿using System;
+using System.Buffers;
 using System.Text;
 
 namespace StringsAreEvil
@@ -110,6 +111,10 @@ namespace StringsAreEvil
             }
 
             return nums;
+        }
+
+        public void ParseLine(ReadOnlySpan<byte> line)
+        {
         }
     }
 }

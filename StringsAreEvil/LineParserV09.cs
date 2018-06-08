@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 
 namespace StringsAreEvil
 {
@@ -137,6 +138,10 @@ namespace StringsAreEvil
             }
 
             return flip ? -val : val;
+        }
+
+        public void ParseLine(ReadOnlySpan<byte> line)
+        {
         }
     }
 }
