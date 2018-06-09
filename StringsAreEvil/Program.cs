@@ -6,6 +6,7 @@ using System.IO;
 using System.IO.Pipelines;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace StringsAreEvil
@@ -116,7 +117,7 @@ namespace StringsAreEvil
 
         private static async Task ViaPipeReader(LineParserPipelinesAndSpan lineParser)
         {
-            var reader = CreateFileReader(@"..\..\example-input.csv");
+            var reader = new FilePipeReader(@"..\..\example-input.csv");
 
             while (true)
             {
@@ -346,107 +347,78 @@ namespace StringsAreEvil
             }
         }
 
-        // Create a PipeReader from a FileStream
-        private static PipeReader CreateFileReader(string path)
+        // Simple and incomplete implementation of a pipe reader over a file
+        private class FilePipeReader : PipeReader
         {
-            async Task ProcessFileAsync(PipeWriter writer, int bufferSize)
+            private readonly FileStream _stream;
+            private int _unconsumedBytes;
+
+            private readonly byte[] _buffer;
+            private ReadOnlySequence<byte> _currentSequence;
+
+            public FilePipeReader(string path, int bufferSize = 4096)
             {
-                try
+                _stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, bufferSize: 1);
+                _buffer = new byte[bufferSize];
+            }
+
+            public override void AdvanceTo(SequencePosition consumed)
+            {
+                AdvanceTo(consumed, consumed);
+            }
+
+            public override void AdvanceTo(SequencePosition consumed, SequencePosition examined)
+            {
+                var unconsumedBuffer = _currentSequence.Slice(consumed);
+                var examinedBuffer = _currentSequence.Slice(examined);
+
+                if (examinedBuffer.Length == 0)
                 {
-                    // This turns off internal file stream buffering
-                    using (var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, bufferSize: 1))
+                    // If we didn't consume everything, copy to the front of the buffer
+                    if (unconsumedBuffer.Length > 0)
                     {
-                        while (true)
-                        {
-                            var memory = writer.GetMemory(bufferSize);
+                        _unconsumedBytes = (int)unconsumedBuffer.Length;
 
-                            MemoryMarshal.TryGetArray((ReadOnlyMemory<byte>)memory, out var segment);
-
-                            var read = file.Read(segment.Array, segment.Offset, segment.Count);
-
-                            if (read == 0)
-                            {
-                                break;
-                            }
-
-                            writer.Advance(read);
-
-                            await writer.FlushAsync();
-                        }
+                        unconsumedBuffer.CopyTo(_buffer);
                     }
                 }
-                catch (Exception ex)
+                else
                 {
-                    writer.Complete(ex);
-                }
-                finally
-                {
-                    writer.Complete();
+                    // We didn't examine everything so don't yield the awaiter
+                    _currentSequence = unconsumedBuffer;
                 }
             }
 
-            var pool = new SimpleArrayPool();
-            var segmentSize = pool.MaxBufferSize;
-
-            // Running in line can be dangerous but we know what we're doing here
-            var options = new PipeOptions(
-                readerScheduler: PipeScheduler.Inline,
-                writerScheduler: PipeScheduler.Inline,
-                minimumSegmentSize: segmentSize,
-                pool: pool);
-
-            var pipe = new Pipe(options);
-            _ = ProcessFileAsync(pipe.Writer, (segmentSize / 2));
-
-            return pipe.Reader;
-        }
-
-        private class SimpleArrayPool : MemoryPool<byte>
-        {
-            private const int _maxBufferSize = 4 * 1024;
-
-            private readonly Queue<ArrayOwnedMemory> _pool = new Queue<ArrayOwnedMemory>(2);
-
-            public override int MaxBufferSize => _maxBufferSize;
-
-            public override IMemoryOwner<byte> Rent(int minBufferSize = -1)
+            public override void CancelPendingRead()
             {
-                if (minBufferSize > _maxBufferSize)
-                {
-                    throw new NotSupportedException();
-                }
-
-                if (_pool.Count > 0)
-                {
-                    return _pool.Dequeue();
-                }
-
-                return new ArrayOwnedMemory(this);
+                throw new NotImplementedException();
             }
 
-            protected override void Dispose(bool disposing)
+            public override void Complete(Exception exception = null)
             {
-
+                _stream.Dispose();
             }
 
-            private class ArrayOwnedMemory : IMemoryOwner<byte>
+            public override void OnWriterCompleted(Action<Exception, object> callback, object state)
             {
-                private readonly SimpleArrayPool _singleArrayPool;
-                private readonly byte[] _buffer;
+                throw new NotImplementedException();
+            }
 
-                public ArrayOwnedMemory(SimpleArrayPool singleArrayPool)
-                {
-                    _buffer = new byte[singleArrayPool.MaxBufferSize];
-                    _singleArrayPool = singleArrayPool;
-                }
+            public override ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
+            {
+                // Blocking reads, because we're synchronous
+                var read = _stream.Read(_buffer, _unconsumedBytes, _buffer.Length - _unconsumedBytes);
 
-                public Memory<byte> Memory => _buffer;
+                _currentSequence = new ReadOnlySequence<byte>(_buffer, 0, _unconsumedBytes + read);
 
-                public void Dispose()
-                {
-                    // Only one at a time!
-                    _singleArrayPool._pool.Enqueue(this);
-                }
+                var result = new ReadResult(_currentSequence, isCanceled: false, isCompleted: read == 0);
+
+                return new ValueTask<ReadResult>(result);
+            }
+
+            public override bool TryRead(out ReadResult result)
+            {
+                throw new NotImplementedException();
             }
         }
     }
