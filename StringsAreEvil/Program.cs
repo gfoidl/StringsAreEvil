@@ -111,6 +111,7 @@ namespace StringsAreEvil
             }
 
             Console.WriteLine(Environment.NewLine);
+            Console.ReadLine();
         }
 
         private static async Task ViaPipeReader(LineParserPipelinesAndSpan lineParser)
@@ -384,8 +385,17 @@ namespace StringsAreEvil
                 }
             }
 
-            var segmentSize = 8 * 1024;
-            var pipe = new Pipe(new PipeOptions(readerScheduler: PipeScheduler.Inline, minimumSegmentSize: segmentSize, pool: new SimpleArrayPool()));
+            var pool = new SimpleArrayPool();
+            var segmentSize = pool.MaxBufferSize;
+
+            // Running in line can be dangerous but we know what we're doing here
+            var options = new PipeOptions(
+                readerScheduler: PipeScheduler.Inline,
+                writerScheduler: PipeScheduler.Inline,
+                minimumSegmentSize: segmentSize,
+                pool: pool);
+
+            var pipe = new Pipe(options);
             _ = ProcessFileAsync(pipe.Writer, (segmentSize / 2));
 
             return pipe.Reader;
@@ -393,7 +403,7 @@ namespace StringsAreEvil
 
         private class SimpleArrayPool : MemoryPool<byte>
         {
-            private const int _maxBufferSize = 8 * 1024;
+            private const int _maxBufferSize = 4 * 1024;
 
             private readonly Queue<ArrayOwnedMemory> _pool = new Queue<ArrayOwnedMemory>(2);
 
