@@ -385,10 +385,59 @@ namespace StringsAreEvil
             }
 
             var segmentSize = 8 * 1024;
-            var pipe = new Pipe(new PipeOptions(readerScheduler: PipeScheduler.Inline, minimumSegmentSize: segmentSize));
+            var pipe = new Pipe(new PipeOptions(readerScheduler: PipeScheduler.Inline, minimumSegmentSize: segmentSize, pool: new SimpleArrayPool()));
             _ = ProcessFileAsync(pipe.Writer, (segmentSize / 2));
 
             return pipe.Reader;
+        }
+
+        private class SimpleArrayPool : MemoryPool<byte>
+        {
+            private const int _maxBufferSize = 8 * 1024;
+
+            private readonly Queue<ArrayOwnedMemory> _pool = new Queue<ArrayOwnedMemory>(2);
+
+            public override int MaxBufferSize => _maxBufferSize;
+
+            public override IMemoryOwner<byte> Rent(int minBufferSize = -1)
+            {
+                if (minBufferSize > _maxBufferSize)
+                {
+                    throw new NotSupportedException();
+                }
+
+                if (_pool.Count > 0)
+                {
+                    return _pool.Dequeue();
+                }
+
+                return new ArrayOwnedMemory(this);
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+
+            }
+
+            private class ArrayOwnedMemory : IMemoryOwner<byte>
+            {
+                private readonly SimpleArrayPool _singleArrayPool;
+                private readonly byte[] _buffer;
+
+                public ArrayOwnedMemory(SimpleArrayPool singleArrayPool)
+                {
+                    _buffer = new byte[singleArrayPool.MaxBufferSize];
+                    _singleArrayPool = singleArrayPool;
+                }
+
+                public Memory<byte> Memory => _buffer;
+
+                public void Dispose()
+                {
+                    // Only one at a time!
+                    _singleArrayPool._pool.Enqueue(this);
+                }
+            }
         }
     }
 }
