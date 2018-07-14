@@ -1,0 +1,8 @@
+{
+    "profiles": {
+        "StringsAreEvil": {
+            "commandName": "Project",
+            "commandLineArgs": "13"
+        }
+    }
+}

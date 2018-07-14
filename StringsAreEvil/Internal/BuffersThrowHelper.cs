@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 
 namespace System.Buffers
 {
-    internal class BuffersThrowHelper
+    internal static class BuffersThrowHelper
     {
         public static void ThrowArgumentOutOfRangeException(ExceptionArgument argument)
         {

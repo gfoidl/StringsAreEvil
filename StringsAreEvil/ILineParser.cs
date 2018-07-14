@@ -7,8 +7,8 @@ namespace StringsAreEvil
     {
         void ParseLine(string line);
         void ParseLine(char[] line);
-        void Dump();
         void ParseLine(StringBuilder line);
         void ParseLine(ReadOnlySpan<byte> line);
+        void Dump();
     }
 }
