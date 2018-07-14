@@ -4,6 +4,8 @@
         <OutputType>Exe</OutputType>
         <TargetFrameworks>netcoreapp2.1;net471</TargetFrameworks>
         <LangVersion>latest</LangVersion>
+        <DebugType>pdbonly</DebugType>
+        <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
 
     <!-- For MemoryPoolBlock -->

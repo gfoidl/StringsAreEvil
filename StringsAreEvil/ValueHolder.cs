@@ -65,4 +65,27 @@
             return ElementId + "," + VehicleId + "," + Term + "," + Mileage + "," + Value;
         }
     }
+
+    public readonly struct ValueHolderAsReadOnlyStruct
+    {
+        public int ElementId { get; }
+        public int VehicleId { get; }
+        public int Term { get; }
+        public int Mileage { get; }
+        public decimal Value { get; }
+
+        public ValueHolderAsReadOnlyStruct(int elementId, int vehicleId, int term, int mileage, decimal value)
+        {
+            ElementId = elementId;
+            VehicleId = vehicleId;
+            Term = term;
+            Mileage = mileage;
+            Value = value;
+        }
+
+        public override string ToString()
+        {
+            return ElementId + "," + VehicleId + "," + Term + "," + Mileage + "," + Value;
+        }
+    }
 }

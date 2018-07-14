@@ -88,6 +88,13 @@ namespace StringsAreEvil
                     Console.WriteLine("#13 ViaPipeReader");
                     return new ViaPipeReader(new LineParserPipelinesAndSpan());
                 },
+#if NETCOREAPP2_1
+                ["14"] = ()=>
+                {
+                    Console.WriteLine("#14 ViaPipeReader2");
+                    return new ViaPipeReader2(new LineParserPipelinesAndSpan2());
+                },
+#endif
             };
 
 #if DEBUG_

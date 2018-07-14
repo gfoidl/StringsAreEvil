@@ -2,21 +2,24 @@
 using System.Buffers;
 using System.Threading.Tasks;
 using StringsAreEvil.Internal;
+using System.IO.Pipelines;
+using System.Runtime.CompilerServices;
 
 namespace StringsAreEvil
 {
-    public sealed class ViaPipeReader : Variant
+#if NETCOREAPP2_1
+    public sealed class ViaPipeReader2 : Variant
     {
-        public ViaPipeReader(ILineParser lineParser) : base(lineParser) { }
+        public ViaPipeReader2(ILineParser lineParser) : base(lineParser) { }
 
         public override async Task ParseAsync(string fileName)
         {
-            var reader = new FilePipeReader(fileName);
+            var reader = new FilePipeReader2(fileName, 1024 << 2);
 
             while (true)
             {
-                var result = await reader.ReadAsync();
-                var buffer = result.Buffer;
+                ReadResult result = await reader.ReadAsync();
+                ReadOnlySequence<byte> buffer = result.Buffer;
 
                 ParseLines(ref buffer);
 
@@ -39,9 +42,9 @@ namespace StringsAreEvil
 
             while (!reader.End)
             {
-                var span = reader.UnreadSegment;
-                var index = span.IndexOf(newLine);
-                var length = 0;
+                ReadOnlySpan<byte> span = reader.UnreadSegment;
+                int index = span.IndexOf(newLine);
+                int length = 0;
 
                 if (index != -1)
                 {
@@ -52,8 +55,9 @@ namespace StringsAreEvil
                 {
                     // We didn't find the new line in the current segment, see if it's 
                     // another segment
-                    var current = reader.Position;
-                    var linePos = buffer.Slice(current).PositionOf(newLine);
+                    SequencePosition current = reader.Position;
+                    ReadOnlySequence<byte> currentSequence = buffer.Slice(current);
+                    SequencePosition? linePos = currentSequence.PositionOf(newLine);
 
                     if (linePos == null)
                     {
@@ -62,7 +66,7 @@ namespace StringsAreEvil
                     }
 
                     // We found one, so get the line and parse it
-                    var line = buffer.Slice(current, linePos.Value);
+                    ReadOnlySequence<byte> line = currentSequence.Slice(0, linePos.Value);
                     ParseLine(line);
 
                     length = (int)line.Length;
@@ -76,14 +80,24 @@ namespace StringsAreEvil
             buffer = buffer.Slice(reader.Position);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ParseLine(in ReadOnlySequence<byte> line)
         {
-            // Lines are always small so we incur a small copy if we happen to cross a buffer boundary
             if (line.IsSingleSegment)
             {
                 _lineParser.ParseLine(line.First.Span);
             }
-            else if (line.Length < 256)
+            else
+            {
+                // Lines are always small so we incur a small copy if we happen to cross a buffer boundary
+                ParseLineMultiSegment(line);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void ParseLineMultiSegment(in ReadOnlySequence<byte> line)
+        {
+            if (line.Length < 256)
             {
                 // Small lines we copy to the stack
                 Span<byte> stackLine = stackalloc byte[(int)line.Length];
@@ -107,4 +121,5 @@ namespace StringsAreEvil
             }
         }
     }
+#endif
 }
