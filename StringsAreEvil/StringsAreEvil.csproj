@@ -26,6 +26,7 @@
 
     <ItemGroup Condition="'$(TargetFramework)' != 'netcoreapp3.0'">
         <Compile Remove="Variants\ViaPipeReaderSequenceReader.cs" />
+        <Compile Remove="Variants\ViaPipeLineParserAsStruct.cs" />
     </ItemGroup>
 
     <ItemGroup>

@@ -95,6 +95,11 @@ namespace StringsAreEvil
                 {
                     Console.WriteLine("#15 ViaPipeReader3");
                     return new ViaPipeReaderSequenceReader(new LineParserPipelinesAndSpan3());
+                },
+                ["16"] = () =>
+                {
+                    Console.WriteLine("#16 ViaPipeLineParserAsStruct");
+                    return new ViaPipeLineParserAsStruct<LineParserAsStruct>(new LineParserAsStruct(true));
                 }
 #endif
             };
