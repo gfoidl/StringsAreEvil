@@ -28,7 +28,7 @@ namespace StringsAreEvil
                 }
             }
 
-            reader.Complete();
+            await reader.CompleteAsync();
         }
 
         private void ParseLines(ref ReadOnlySequence<byte> buffer)

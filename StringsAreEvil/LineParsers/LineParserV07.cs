@@ -1,5 +1,4 @@
-﻿using System;
-using System.Buffers;
+﻿using System.Buffers;
 using System.Text;
 
 namespace StringsAreEvil
@@ -14,7 +13,7 @@ namespace StringsAreEvil
     ///     Instead of having many tiny byte[] buffers, we now use
     ///     an array pool.
     /// </summary>
-    public sealed class LineParserV07 : ILineParser
+    public sealed class LineParserV07 : LineParser<ValueHolder>
     {
         private readonly StringBuilder _stringBuilder;
         private readonly ArrayPool<byte> _arrayPool;
@@ -25,7 +24,7 @@ namespace StringsAreEvil
             _arrayPool = ArrayPool<byte>.Shared;
         }
 
-        public void ParseLine(string line)
+        public override void ParseLine(string line)
         {
             if (line.StartsWith("MNO"))
             {
@@ -39,26 +38,16 @@ namespace StringsAreEvil
                     var term = ParseSectionAsInt(findCommasInLine[2] + 1, findCommasInLine[3], line); // equal to parts[3] - term
                     var mileage = ParseSectionAsInt(findCommasInLine[3] + 1, findCommasInLine[4], line); // equal to parts[4] - mileage
                     var value = ParseSectionAsDecimal(findCommasInLine[4] + 1, findCommasInLine[5], line); // equal to parts[5] - value
+
                     var valueHolder = new ValueHolder(elementId, vehicleId, term, mileage, value);
+
+                    AddItem(valueHolder);
                 }
                 finally
                 {
                     _arrayPool.Return(tempBuffer, true);
                 }
             }
-        }
-
-        public void ParseLine(char[] line)
-        {
-        }
-
-        public void Dump()
-        {
-        }
-
-        public void ParseLine(StringBuilder line)
-        {
-            
         }
 
         private decimal ParseSectionAsDecimal(int start, int end, string line)
@@ -98,10 +87,6 @@ namespace StringsAreEvil
             }
 
             return nums;
-        }
-
-        public void ParseLine(ReadOnlySpan<byte> line)
-        {
         }
     }
 }

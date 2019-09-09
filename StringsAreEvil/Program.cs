@@ -11,6 +11,7 @@ namespace StringsAreEvil
     {
         public static async Task Main(string[] args)
         {
+            CultureInfo defaultCulture = Thread.CurrentThread.CurrentCulture;
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 #if !NETCOREAPP
             AppDomain.MonitoringIsEnabled = true;
@@ -83,32 +84,48 @@ namespace StringsAreEvil
                     return new ViaPipeReader(new LineParserPipelinesAndSpan());
                 },
 #if NETCOREAPP
-                ["14"] = ()=>
+                ["14"] = () =>
                 {
                     Console.WriteLine("#14 ViaPipeReader2");
                     return new ViaPipeReader2(new LineParserPipelinesAndSpan2());
                 },
 #endif
-            };
-
-#if DEBUG_
-            dict["13"]();
-            Environment.Exit(0);
+#if NETCOREAPP3_0
+                ["15"] = () =>
+                {
+                    Console.WriteLine("#15 ViaPipeReader3");
+                    return new ViaPipeReaderSequenceReader(new LineParserPipelinesAndSpan3());
+                }
 #endif
+            };
 
 #if NETCOREAPP
             var stopWatch = Stopwatch.StartNew();
 #endif
+            Func<Variant> variantFactory = null;
+            string fileName = null;
 
-            if (args.Length == 1 && dict.ContainsKey(args[0]))
+            if (args.Length == 1 && dict.TryGetValue(args[0], out variantFactory))
             {
-                await dict[args[0]]().ParseAsync("example-input.csv");
+                fileName = "example-input.csv";
+            }
+            else if (args.Length == 2 && dict.TryGetValue(args[0], out variantFactory))
+            {
+                fileName = args[1];
             }
             else
             {
                 Console.WriteLine("Incorrect parameters");
                 Environment.Exit(1);
             }
+
+            Variant variant = variantFactory();
+            await variant.ParseAsync(fileName);
+#if DEBUG
+            variant.LineParser.Dump();
+#endif
+
+            Thread.CurrentThread.CurrentCulture = defaultCulture;
 
 #if !NETCOREAPP
             Console.WriteLine($"Took: {AppDomain.CurrentDomain.MonitoringTotalProcessorTime.TotalMilliseconds:#,###} ms");
@@ -124,6 +141,8 @@ namespace StringsAreEvil
             {
                 Console.WriteLine($"Gen {index} collections: {GC.CollectionCount(index)}");
             }
+
+            Console.WriteLine($"\nparsed lines: {variant.LineParser.Count}");
 
             Console.WriteLine(Environment.NewLine);
             if (Debugger.IsAttached) Console.ReadKey();

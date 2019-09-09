@@ -8,6 +8,8 @@ namespace StringsAreEvil
 
         protected Variant(ILineParser lineParser) => _lineParser = lineParser;
 
+        public ILineParser LineParser => _lineParser;
+
         public abstract Task ParseAsync(string fileName);
     }
 }

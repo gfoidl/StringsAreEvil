@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 
 namespace StringsAreEvil
 {
@@ -15,15 +11,9 @@ namespace StringsAreEvil
     /// Change:-
     ///     Raw stream processing, no strings anywhere.
     /// </summary>
-    public sealed class LineParserV11 : ILineParser
+    public sealed class LineParserV11 : LineParser<ValueHolderAsStruct>
     {
-        private List<ValueHolderAsStruct> list = new List<ValueHolderAsStruct>();
-
-        public void ParseLine(string line)
-        {
-        }
-
-        public void ParseLine(char[] line)
+        public override void ParseLine(char[] line)
         {
             if (line[0] == 'M' && line[1] == 'N' && line[2] == 'O')
             {
@@ -32,19 +22,11 @@ namespace StringsAreEvil
                 int term = ParseSectionAsInt(line, 3); // equal to parts[3] - term
                 int mileage = ParseSectionAsInt(line, 4); // equal to parts[4] - mileage
                 decimal value = ParseSectionAsDecimal(line, 5); // equal to parts[5] - value
+
                 var valueHolder = new ValueHolderAsStruct(elementId, vehicleId, term, mileage, value);
-                //list.Add(valueHolder);
+
+                AddItem(valueHolder);
             }
-        }
-
-        public void Dump()
-        {
-            File.WriteAllLines(@"..\..\v11.txt", list.Select(x => x.ToString()));
-        }
-
-        public void ParseLine(StringBuilder line)
-        {
-            
         }
 
         private static decimal ParseSectionAsDecimal(char[] line, int numberOfCommasToSkip)
@@ -143,10 +125,6 @@ namespace StringsAreEvil
             }
 
             return flip ? -val : val;
-        }
-
-        public void ParseLine(ReadOnlySpan<byte> line)
-        {
         }
     }
 }

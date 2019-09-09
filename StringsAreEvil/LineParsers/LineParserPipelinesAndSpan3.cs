@@ -1,16 +1,19 @@
 ﻿using System;
 using System.Buffers.Text;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace StringsAreEvil
 {
-    public sealed class LineParserPipelinesAndSpan2 : LineParser<ValueHolderAsReadOnlyStruct>
+    public sealed class LineParserPipelinesAndSpan3 : LineParser<ValueHolderAsReadOnlyStruct>
     {
         public override void ParseLine(ReadOnlySpan<byte> line)
         {
             const byte comma = (byte)',';
 
             // SKIP MNO
-            if (line[0] == 'M' && line[1] == 'N' && line[2] == 'O')
+            if (ShouldProcessLine(line))
             {
                 // Parse the line
 
@@ -40,6 +43,37 @@ namespace StringsAreEvil
 
                 AddItem(valueHolder);
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool ShouldProcessLine(ReadOnlySpan<byte> line)
+        {
+            if (BitConverter.IsLittleEndian)
+            {
+#if VAR_A
+                Debug.Assert(line.Length > 3);
+
+                ref byte b = ref MemoryMarshal.GetReference(line);
+
+                const short t0 = 'M' | ('N' << 8);
+                bool b0 = Unsafe.As<byte, short>(ref b) == t0;
+                bool b1 = Unsafe.Add(ref b, 2) == 'O';
+
+                return b1 && b0;
+#else
+                Debug.Assert(line.Length > 4);
+
+                ref byte b = ref MemoryMarshal.GetReference(line);
+                const int t0 = 'M' | ('N' << 8) | ('O' << 16);
+                int c0 = Unsafe.As<byte, int>(ref b) & 0x_FF_FF_FF;
+
+                return c0 == t0;
+                //return c0 - t0 == 0;
+#endif
+            }
+
+            // reverse order for bound checks
+            return line[2] == 'O' && line[1] == 'N' && line[0] == 'M';
         }
     }
 }

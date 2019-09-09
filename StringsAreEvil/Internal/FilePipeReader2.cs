@@ -8,9 +8,10 @@ using System.IO.Pipelines;
 using System.Threading;
 using System.Threading.Tasks;
 
+#if NETCOREAPP
+
 namespace StringsAreEvil.Internal
 {
-#if NETCOREAPP
     // Simple and incomplete implementation of a pipe reader over a file
     internal class FilePipeReader2 : PipeReader
     {
@@ -22,7 +23,6 @@ namespace StringsAreEvil.Internal
 
         public FilePipeReader2(string path, int bufferSize = 4096)
         {
-            Console.WriteLine($"Buffersize: {bufferSize}");
 #if ASYNC_IO
             const bool useAsync = true;
 #else
@@ -69,17 +69,12 @@ namespace StringsAreEvil.Internal
             _stream.Dispose();
         }
 
-        public override void OnWriterCompleted(Action<Exception, object> callback, object state)
-        {
-            throw new NotImplementedException();
-        }
-
         public override ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
         {
 #if ASYNC
             ValueTask<int> readTask = _stream.ReadAsync(_buffer.AsMemory(_unconsumedBytes, _buffer.Length - _unconsumedBytes));
 
-            return readTask.IsCompleted
+            return readTask.IsCompletedSuccessfully
                 ? new ValueTask<ReadResult>(CreateReadResult(readTask.Result))
                 : Async(readTask);
 
@@ -107,5 +102,6 @@ namespace StringsAreEvil.Internal
             throw new NotImplementedException();
         }
     }
-#endif
 }
+
+#endif

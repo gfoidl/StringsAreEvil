@@ -1,20 +1,36 @@
-﻿using System;
+﻿//#define ASYNC_IO
+
+using System;
 using System.Buffers;
+using System.IO;
 using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using StringsAreEvil.Internal;
 
 namespace StringsAreEvil
 {
-#if NETCOREAPP
-    public sealed class ViaPipeReader2 : Variant
+    public sealed class ViaPipeReaderSequenceReader : Variant
     {
-        public ViaPipeReader2(ILineParser lineParser) : base(lineParser) { }
+        private const byte NewLine = (byte)'\n';
+
+        public ViaPipeReaderSequenceReader(ILineParser lineParser) : base(lineParser) { }
 
         public override async Task ParseAsync(string fileName)
         {
-            var reader = new FilePipeReader2(fileName, 1024 << 2);
+#if ASYNC_IO
+            const bool useAsync = true;
+#else
+            const bool useAsync = false;
+#endif
+#if DEBUG
+            const int bufferSize = 32;
+#else
+            const int bufferSize = 4096;
+#endif
+
+            //using var stream = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, useAsync);
+            //var reader = PipeReader.Create(stream, new StreamPipeReaderOptions(bufferSize: bufferSize));
+            var reader = new Internal.FilePipeReader2(fileName, bufferSize);
 
             while (true)
             {
@@ -22,7 +38,6 @@ namespace StringsAreEvil
                 ReadOnlySequence<byte> buffer = result.Buffer;
 
                 ParseLines(ref buffer);
-
                 reader.AdvanceTo(buffer.Start, buffer.End);
 
                 if (result.IsCompleted)
@@ -34,49 +49,51 @@ namespace StringsAreEvil
             await reader.CompleteAsync();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ParseLines(ref ReadOnlySequence<byte> buffer)
         {
-            const byte newLine = (byte)'\n';
-
-            var reader = new BufferReader(buffer);
-
-            while (!reader.End)
+            if (buffer.IsSingleSegment)
             {
-                ReadOnlySpan<byte> span = reader.UnreadSegment;
-                int index = span.IndexOf(newLine);
-                int length = 0;
+                ParseLinesFast(buffer.FirstSpan, out int consumed);
+                buffer = buffer.Slice(consumed);
+                return;
+            }
+
+            ParseLinesSlow(ref buffer);
+        }
+
+        private void ParseLinesFast(ReadOnlySpan<byte> span, out int consumed)
+        {
+            int consumedLocal = 0;
+
+            while (!span.IsEmpty)
+            {
+                int index = span.IndexOf(NewLine);
 
                 if (index != -1)
                 {
-                    length = index;
                     _lineParser.ParseLine(span.Slice(0, index));
+                    consumedLocal += index + 1;
+                    span = span.Slice(index + 1);
                 }
                 else
                 {
-                    // We didn't find the new line in the current segment, see if it's 
-                    // another segment
-                    SequencePosition current = reader.Position;
-                    ReadOnlySequence<byte> currentSequence = buffer.Slice(current);
-                    SequencePosition? linePos = currentSequence.PositionOf(newLine);
-
-                    if (linePos == null)
-                    {
-                        // Nope
-                        break;
-                    }
-
-                    // We found one, so get the line and parse it
-                    ReadOnlySequence<byte> line = currentSequence.Slice(0, linePos.Value);
-                    ParseLine(line);
-
-                    length = (int)line.Length;
+                    break;
                 }
-
-                // Advance past the line + the \n
-                reader.Advance(length + 1);
             }
 
-            // Update the buffer
+            consumed = consumedLocal;
+        }
+
+        private void ParseLinesSlow(ref ReadOnlySequence<byte> buffer)
+        {
+            var reader = new SequenceReader<byte>(buffer);
+
+            while (reader.TryReadTo(out ReadOnlySequence<byte> line, NewLine, advancePastDelimiter: true))
+            {
+                ParseLine(line);
+            }
+
             buffer = buffer.Slice(reader.Position);
         }
 
@@ -85,7 +102,7 @@ namespace StringsAreEvil
         {
             if (line.IsSingleSegment)
             {
-                _lineParser.ParseLine(line.First.Span);
+                _lineParser.ParseLine(line.FirstSpan);
             }
             else
             {
@@ -95,12 +112,15 @@ namespace StringsAreEvil
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
+        [InitLocals(false)]
         private void ParseLineMultiSegment(in ReadOnlySequence<byte> line)
         {
-            if (line.Length < 256)
+            long lineLength = line.Length;
+
+            if (lineLength <= 256)
             {
                 // Small lines we copy to the stack
-                Span<byte> stackLine = stackalloc byte[(int)line.Length];
+                Span<byte> stackLine = stackalloc byte[256];
                 line.CopyTo(stackLine);
                 _lineParser.ParseLine(stackLine);
             }
@@ -121,5 +141,4 @@ namespace StringsAreEvil
             }
         }
     }
-#endif
 }

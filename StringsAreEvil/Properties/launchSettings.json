@@ -2,7 +2,7 @@
     "profiles": {
         "StringsAreEvil": {
             "commandName": "Project",
-            "commandLineArgs": "13"
+            "commandLineArgs": "15 example-input.csv"
         }
     }
 }

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Text;
-
-namespace StringsAreEvil
+﻿namespace StringsAreEvil
 {
     /// <summary>
     /// Stats:-
@@ -12,9 +9,9 @@ namespace StringsAreEvil
     /// Change:-
     ///     Flipping the value holder to a struct instead of a class
     /// </summary>
-    public sealed class LineParserV10 : ILineParser
+    public sealed class LineParserV10 : LineParser<ValueHolderAsStruct>
     {
-        public void ParseLine(string line)
+        public override void ParseLine(string line)
         {
             if (line.StartsWith("MNO"))
             {
@@ -23,21 +20,11 @@ namespace StringsAreEvil
                 int term = ParseSectionAsInt(line, 3); // equal to parts[3] - term
                 int mileage = ParseSectionAsInt(line, 4); // equal to parts[4] - mileage
                 decimal value = ParseSectionAsDecimal(line, 5); // equal to parts[5] - value
+
                 var valueHolder = new ValueHolderAsStruct(elementId, vehicleId, term, mileage, value);
+
+                AddItem(valueHolder);
             }
-        }
-
-        public void ParseLine(char[] line)
-        {
-        }
-
-        public void Dump()
-        {
-        }
-
-        public void ParseLine(StringBuilder line)
-        {
-            
         }
 
         private static decimal ParseSectionAsDecimal(string line, int numberOfCommasToSkip)
@@ -136,10 +123,6 @@ namespace StringsAreEvil
             }
 
             return flip ? -val : val;
-        }
-
-        public void ParseLine(ReadOnlySpan<byte> line)
-        {
         }
     }
 }

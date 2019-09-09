@@ -18,7 +18,7 @@ namespace StringsAreEvil.Internal
 
         public FilePipeReader(string path, int bufferSize = 4096)
         {
-            _stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, bufferSize: bufferSize);
+            _stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, bufferSize);
             _buffer = new byte[bufferSize];
         }
 
@@ -57,11 +57,6 @@ namespace StringsAreEvil.Internal
         public override void Complete(Exception exception = null)
         {
             _stream.Dispose();
-        }
-
-        public override void OnWriterCompleted(Action<Exception, object> callback, object state)
-        {
-            throw new NotImplementedException();
         }
 
         public override ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Text;
-
-namespace StringsAreEvil
+﻿namespace StringsAreEvil
 {
     /// <summary>
     /// Stats:-
@@ -12,32 +9,17 @@ namespace StringsAreEvil
     /// Change:-
     ///     Use the orginal parts array
     /// </summary>
-    public sealed class LineParserV02 : ILineParser
+    public sealed class LineParserV02 : LineParser<ValueHolder>
     {
-        public void ParseLine(string line)
+        public override void ParseLine(string line)
         {
             var parts = line.Split(',');
             if (parts[0] == "MNO")
             {
                 var valueHolder = new ValueHolder(parts);
+
+                AddItem(valueHolder);
             }
-        }
-
-        public void ParseLine(char[] line)
-        {
-        }
-
-        public void Dump()
-        {
-        }
-
-        public void ParseLine(StringBuilder line)
-        {
-            
-        }
-
-        public void ParseLine(ReadOnlySpan<byte> line)
-        {
         }
     }
 }

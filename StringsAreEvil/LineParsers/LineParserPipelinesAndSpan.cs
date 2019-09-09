@@ -1,36 +1,11 @@
 ﻿using System;
-using System.Buffers;
 using System.Buffers.Text;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace StringsAreEvil
 {
-    class LineParserPipelinesAndSpan : ILineParser
+    public sealed class LineParserPipelinesAndSpan : LineParser<ValueHolderAsStruct>
     {
-        public void Dump()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void ParseLine(string line)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void ParseLine(char[] line)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void ParseLine(StringBuilder line)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void ParseLine(ReadOnlySpan<byte> line)
+        public override void ParseLine(ReadOnlySpan<byte> line)
         {
             const byte comma = (byte)',';
 
@@ -55,7 +30,10 @@ namespace StringsAreEvil
                 line = line.Slice(commaAt + 1);
                 commaAt = line.IndexOf(comma);
                 Utf8Parser.TryParse(line.Slice(0, commaAt), out decimal value, out _);
+
                 var valueHolder = new ValueHolderAsStruct(elementId, vehicleId, term, mileage, value);
+
+                AddItem(valueHolder);
             }
         }
     }

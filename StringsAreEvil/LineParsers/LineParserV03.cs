@@ -1,7 +1,4 @@
-﻿using System;
-using System.Text;
-
-namespace StringsAreEvil
+﻿namespace StringsAreEvil
 {
     /// <summary>
     /// Stats:-
@@ -14,31 +11,16 @@ namespace StringsAreEvil
     ///     do not need to do any string processing unless the line begins
     ///     with MNO
     /// </summary>
-    public sealed class LineParserV03 : ILineParser
+    public sealed class LineParserV03 : LineParser<ValueHolder>
     {
-        public void ParseLine(string line)
+        public override void ParseLine(string line)
         {
             if (line.StartsWith("MNO"))
             {
                 var valueHolder = new ValueHolder(line);
+
+                AddItem(valueHolder);
             }
-        }
-
-        public void ParseLine(char[] line)
-        {
-        }
-
-        public void Dump()
-        {
-        }
-
-        public void ParseLine(StringBuilder line)
-        {
-            
-        }
-
-        public void ParseLine(ReadOnlySpan<byte> line)
-        {
         }
     }
 }

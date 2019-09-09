@@ -1,7 +1,4 @@
-﻿using System;
-using System.Text;
-
-namespace StringsAreEvil
+﻿namespace StringsAreEvil
 {
     /// <summary>
     /// Stats:-
@@ -14,9 +11,9 @@ namespace StringsAreEvil
     ///     commas required. Therefore we no longer need the pool of byte[]
     ///     buffers. This change saves us time (1 second).
     /// </summary>
-    public sealed class LineParserV09 : ILineParser
+    public sealed class LineParserV09 : LineParser<ValueHolder>
     {
-        public void ParseLine(string line)
+        public override void ParseLine(string line)
         {
             if (line.StartsWith("MNO"))
             {
@@ -25,21 +22,11 @@ namespace StringsAreEvil
                 int term = ParseSectionAsInt(line, 3); // equal to parts[3] - term
                 int mileage = ParseSectionAsInt(line, 4); // equal to parts[4] - mileage
                 decimal value = ParseSectionAsDecimal(line, 5); // equal to parts[5] - value
+
                 var valueHolder = new ValueHolder(elementId, vehicleId, term, mileage, value);
+
+                AddItem(valueHolder);
             }
-        }
-
-        public void ParseLine(char[] line)
-        {
-        }
-
-        public void Dump()
-        {
-        }
-
-        public void ParseLine(StringBuilder line)
-        {
-            
         }
 
         private static decimal ParseSectionAsDecimal(string line, int numberOfCommasToSkip)
@@ -138,10 +125,6 @@ namespace StringsAreEvil
             }
 
             return flip ? -val : val;
-        }
-
-        public void ParseLine(ReadOnlySpan<byte> line)
-        {
         }
     }
 }

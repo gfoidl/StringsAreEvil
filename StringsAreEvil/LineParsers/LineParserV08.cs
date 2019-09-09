@@ -1,6 +1,4 @@
-﻿using System;
-using System.Buffers;
-using System.Text;
+﻿using System.Buffers;
 
 namespace StringsAreEvil
 {
@@ -13,7 +11,7 @@ namespace StringsAreEvil
     /// Change:-
     ///     Begin to do manual int & decimal parsing.
     /// </summary>
-    public sealed class LineParserV08 : ILineParser
+    public sealed class LineParserV08 : LineParser<ValueHolder>
     {
         private readonly ArrayPool<byte> _arrayPool;
 
@@ -22,7 +20,7 @@ namespace StringsAreEvil
             _arrayPool = ArrayPool<byte>.Shared;
         }
 
-        public void ParseLine(string line)
+        public override void ParseLine(string line)
         {
             if (line.StartsWith("MNO"))
             {
@@ -36,26 +34,16 @@ namespace StringsAreEvil
                     var term = ParseSectionAsInt(line, findCommasInLine[2] + 1, findCommasInLine[3]); // equal to parts[3] - term
                     var mileage = ParseSectionAsInt(line, findCommasInLine[3] + 1, findCommasInLine[4]); // equal to parts[4] - mileage
                     var value = ParseSectionAsDecimal(line, findCommasInLine[4] + 1, findCommasInLine[5]); // equal to parts[5] - value
+
                     var valueHolder = new ValueHolder(elementId, vehicleId, term, mileage, value);
+
+                    AddItem(valueHolder);
                 }
-                finally 
+                finally
                 {
                     _arrayPool.Return(tempBuffer, true);
                 }
             }
-        }
-
-        public void ParseLine(char[] line)
-        {
-        }
-
-        public void Dump()
-        {
-        }
-
-        public void ParseLine(StringBuilder line)
-        {
-            
         }
 
         private decimal ParseSectionAsDecimal(string line, int start, int end)
@@ -111,10 +99,6 @@ namespace StringsAreEvil
             }
 
             return nums;
-        }
-
-        public void ParseLine(ReadOnlySpan<byte> line)
-        {
         }
     }
 }

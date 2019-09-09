@@ -257,4 +257,5 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
-/example-input.csv
+/example-input*.csv
+/StringsAreEvil/FodyWeavers.*

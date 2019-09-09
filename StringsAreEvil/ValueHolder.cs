@@ -83,7 +83,7 @@
             Value = value;
         }
 
-        public override string ToString()
+        public readonly override string ToString()
         {
             return ElementId + "," + VehicleId + "," + Term + "," + Mileage + "," + Value;
         }
