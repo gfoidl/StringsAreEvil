@@ -7,7 +7,7 @@ using System.Runtime.CompilerServices;
 
 namespace StringsAreEvil
 {
-#if NETCOREAPP2_1
+#if NETCOREAPP
     public sealed class ViaPipeReader2 : Variant
     {
         public ViaPipeReader2(ILineParser lineParser) : base(lineParser) { }

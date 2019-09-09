@@ -1,24 +1,18 @@
 ﻿using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.IO;
-using System.IO.Pipelines;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using StringsAreEvil.Internal;
 
 namespace StringsAreEvil
 {
-    public class Program
+    public static class Program
     {
         public static async Task Main(string[] args)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
-#if NET471
+#if !NETCOREAPP
             AppDomain.MonitoringIsEnabled = true;
 #endif
             var dict = new Dictionary<string, Func<Variant>>
@@ -88,7 +82,7 @@ namespace StringsAreEvil
                     Console.WriteLine("#13 ViaPipeReader");
                     return new ViaPipeReader(new LineParserPipelinesAndSpan());
                 },
-#if NETCOREAPP2_1
+#if NETCOREAPP
                 ["14"] = ()=>
                 {
                     Console.WriteLine("#14 ViaPipeReader2");
@@ -102,7 +96,7 @@ namespace StringsAreEvil
             Environment.Exit(0);
 #endif
 
-#if NETCOREAPP2_1
+#if NETCOREAPP
             var stopWatch = Stopwatch.StartNew();
 #endif
 
@@ -116,13 +110,13 @@ namespace StringsAreEvil
                 Environment.Exit(1);
             }
 
-#if NET471
+#if !NETCOREAPP
             Console.WriteLine($"Took: {AppDomain.CurrentDomain.MonitoringTotalProcessorTime.TotalMilliseconds:#,###} ms");
             Console.WriteLine($"Allocated: {AppDomain.CurrentDomain.MonitoringTotalAllocatedMemorySize / 1024:#,#} kb");
 #else
             stopWatch.Stop();
             Console.WriteLine($"Took: {stopWatch.ElapsedMilliseconds:#,###} ms");
-            Console.WriteLine($"Allocated: --- no API available in .NET Core ---");
+            Console.WriteLine("Allocated: --- no API available in .NET Core ---");
 #endif
             Console.WriteLine($"Peak Working Set: {Process.GetCurrentProcess().PeakWorkingSet64 / 1024:#,#} kb");
 

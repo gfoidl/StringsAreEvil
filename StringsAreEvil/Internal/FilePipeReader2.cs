@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace StringsAreEvil.Internal
 {
-#if NETCOREAPP2_1
+#if NETCOREAPP
     // Simple and incomplete implementation of a pipe reader over a file
     internal class FilePipeReader2 : PipeReader
     {
